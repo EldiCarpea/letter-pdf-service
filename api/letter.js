@@ -1,7 +1,5 @@
-// /api/letter.js  (Vercel Serverless Function, ohne API-Key)
-//
-// POST JSON:
-// { "adresse": "Bahnstraße 17", "plzOrt": "2404 Petronell", "text": "optional" }
+// /api/letter.js
+// POST JSON: { "adresse": "Bahnstraße 17", "plzOrt": "2404 Petronell", "text": "optional" }
 // Aliase akzeptiert: address, Adresse, "plz/ort", PLZ/Ort, plz_ort, plzort, body
 
 const { PDFDocument, StandardFonts, rgb } = require('pdf-lib');
@@ -9,7 +7,7 @@ const { PDFDocument, StandardFonts, rgb } = require('pdf-lib');
 // --- Helpers & Layout ---
 const mm2pt = (mm) => mm * 2.834645669;
 const A4 = { width: 595.28, height: 841.89 }; // pt
-// Standard-Fenster links (DL/C6/5): 20 mm von links, 45 mm von oben, 90x45 mm
+// Fenster links (DL / C6/5), bei Bedarf anpassen:
 const WINDOW_MM = { left: 20, top: 45, width: 90, height: 45 };
 
 function wrapText(text, font, size, maxWidth) {
@@ -27,6 +25,11 @@ function wrapText(text, font, size, maxWidth) {
 
 module.exports = async (req, res) => {
   try {
+    // Healthcheck (praktisch für Browser-GET)
+    if (req.method === 'GET') {
+      return res.status(200).json({ ok: true, usage: 'POST /api/letter { adresse, plzOrt, text? }' });
+    }
+
     // --- CORS / Methoden ---
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
@@ -34,7 +37,7 @@ module.exports = async (req, res) => {
     if (req.method === 'OPTIONS') return res.status(200).end();
     if (req.method !== 'POST') return res.status(405).json({ error: 'Use POST with JSON body' });
 
-    // --- Body sicher lesen (n8n kann manchmal String schicken) ---
+    // --- Body sicher lesen (manchmal kommt er als String) ---
     let b = req.body;
     if (typeof b === 'string') {
       try { b = JSON.parse(b); } catch { b = {}; }
@@ -42,10 +45,8 @@ module.exports = async (req, res) => {
     if (!b || typeof b !== 'object') b = {};
 
     // --- Eingaben normalisieren ---
-    const adresse =
-      (b.adresse ?? b.address ?? b.Adresse ?? '').toString().trim();
-    const plzOrt =
-      (b['plz/ort'] ?? b['PLZ/Ort'] ?? b.plzOrt ?? b.plz_ort ?? b.plzort ?? '').toString().trim();
+    const adresse = (b.adresse ?? b.address ?? b.Adresse ?? '').toString().trim();
+    const plzOrt  = (b['plz/ort'] ?? b['PLZ/Ort'] ?? b.plzOrt ?? b.plz_ort ?? b.plzort ?? '').toString().trim();
 
     const addressBlock = [
       adresse || 'Bahnstraße 17',
@@ -86,9 +87,8 @@ T: +43 1 774 20 32 · E: info@wisehomes.at · W: wisehomes.at`;
 
     const page = pdf.addPage([A4.width, A4.height]);
 
-    // Form holen und GLEICH die Default-Appearance setzen (wichtig!)
+    // Form holen
     const form = pdf.getForm();
-    form.updateFieldAppearances(formFont);
 
     // --- Fensteradresse (editierbares Feld) ---
     const winX = mm2pt(WINDOW_MM.left);
@@ -102,8 +102,9 @@ T: +43 1 774 20 32 · E: info@wisehomes.at · W: wisehomes.at`;
     addrField.setBorderWidth(0);
     addrField.addToPage(page, { x: winX, y: winY, width: winW, height: winH });
     addrField.setText(addressBlock);
-    // (Optional zusätzlich, schadet nicht)
-    // addrField.updateAppearances(formFont);
+
+    // ❗ GANZ WICHTIG: Default Appearances generieren (sonst 500 /DA-Fehler)
+    form.updateFieldAppearances(formFont);
 
     // --- Brieftext layouten ---
     const marginLeft = mm2pt(25);
@@ -120,7 +121,7 @@ T: +43 1 774 20 32 · E: info@wisehomes.at · W: wisehomes.at`;
         const lines = wrapText(p, font, size, contentWidth);
         for (const line of lines) {
           const h = font.heightAtSize(size);
-          if (y - h < mm2pt(15)) y = A4.height - mm2pt(25); // einfacher Umbruch
+          if (y - h < mm2pt(15)) y = A4.height - mm2pt(25); // simpler Umbruch
           page.drawText(line, { x: marginLeft, y, size, font, color: rgb(0, 0, 0) });
           y -= h + lineGap;
         }
@@ -142,7 +143,7 @@ T: +43 1 774 20 32 · E: info@wisehomes.at · W: wisehomes.at`;
     for (const [label, val, href] of contact) {
       page.drawText(label, { x, y: baseY, size, font: fontRegular });
       x += fontRegular.widthOfTextAtSize(label, size);
-      page.drawText(val, { x, y: baseY, size, font: fontRegular, link: href });
+      page.drawText(val,   { x, y: baseY, size, font: fontRegular, link: href });
       x += fontRegular.widthOfTextAtSize(val, size);
     }
 
