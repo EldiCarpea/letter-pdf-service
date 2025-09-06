@@ -1,13 +1,18 @@
-// /api/letter.js
+// /api/letter.js  (Vercel Serverless Function, ohne API-Key)
 // POST JSON: { "adresse": "Bahnstraße 17", "plzOrt": "2404 Petronell", "text": "optional" }
-// Aliase akzeptiert: address, Adresse, "plz/ort", PLZ/Ort, plz_ort, plzort, body
 
-const { PDFDocument, StandardFonts, rgb } = require('pdf-lib');
+const {
+  PDFDocument,
+  StandardFonts,
+  rgb,
+  PDFName,
+  PDFString,
+} = require('pdf-lib');
 
-// --- Helpers & Layout ---
+// ---- Layout-Helpers ----
 const mm2pt = (mm) => mm * 2.834645669;
-const A4 = { width: 595.28, height: 841.89 }; // pt
-// Fenster links (DL / C6/5), bei Bedarf anpassen:
+const A4 = { width: 595.28, height: 841.89 };
+// Fenster links (DL/C6/5). Feintuning ggf. hier:
 const WINDOW_MM = { left: 20, top: 45, width: 90, height: 45 };
 
 function wrapText(text, font, size, maxWidth) {
@@ -25,33 +30,27 @@ function wrapText(text, font, size, maxWidth) {
 
 module.exports = async (req, res) => {
   try {
-    // Healthcheck (praktisch für Browser-GET)
+    // Healthcheck (praktisch im Browser)
     if (req.method === 'GET') {
       return res.status(200).json({ ok: true, usage: 'POST /api/letter { adresse, plzOrt, text? }' });
     }
 
-    // --- CORS / Methoden ---
+    // CORS + Methoden
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
     res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
     if (req.method === 'OPTIONS') return res.status(200).end();
     if (req.method !== 'POST') return res.status(405).json({ error: 'Use POST with JSON body' });
 
-    // --- Body sicher lesen (manchmal kommt er als String) ---
+    // Body robust parsen (falls als String geschickt)
     let b = req.body;
-    if (typeof b === 'string') {
-      try { b = JSON.parse(b); } catch { b = {}; }
-    }
+    if (typeof b === 'string') { try { b = JSON.parse(b); } catch { b = {}; } }
     if (!b || typeof b !== 'object') b = {};
 
-    // --- Eingaben normalisieren ---
+    // Eingaben
     const adresse = (b.adresse ?? b.address ?? b.Adresse ?? '').toString().trim();
     const plzOrt  = (b['plz/ort'] ?? b['PLZ/Ort'] ?? b.plzOrt ?? b.plz_ort ?? b.plzort ?? '').toString().trim();
-
-    const addressBlock = [
-      adresse || 'Bahnstraße 17',
-      plzOrt  || '2404 Petronell',
-    ].join('\n');
+    const addressBlock = [(adresse || 'Bahnstraße 17'), (plzOrt || '2404 Petronell')].join('\n');
 
     const defaultBody = `herzlichen Glückwunsch zum Auktionszuschlag!
 
@@ -76,21 +75,27 @@ Mit besten Grüßen
 Eldi Neziri
 Projektberater Wohnbau
 T: +43 1 774 20 32 · E: info@wisehomes.at · W: wisehomes.at`;
-
     const contentBody = (b.text ?? b.body ?? defaultBody).toString();
 
-    // --- PDF erstellen ---
+    // ---- PDF erstellen ----
     const pdf = await PDFDocument.create();
-    const fontRegular = await pdf.embedStandardFont(StandardFonts.TimesRoman);
-    const fontBold    = await pdf.embedStandardFont(StandardFonts.TimesRomanBold);
-    const formFont    = await pdf.embedStandardFont(StandardFonts.Helvetica);
+    const bodyFont = await pdf.embedStandardFont(StandardFonts.TimesRoman);
+    const bodyBold = await pdf.embedStandardFont(StandardFonts.TimesRomanBold);
+
+    // WICHTIG: Formular-Standardappearance (/DA) manuell setzen (low-level)
+    const form = pdf.getForm();
+    const formFont = await pdf.embedStandardFont(StandardFonts.Helvetica); // wir nennen den Resource-Key 'Helv'
+    const acro = form.acroForm;                             // intern, aber zugänglich
+    const drDict = pdf.context.obj({});                     // Default Resources
+    const fontsDict = pdf.context.obj({});
+    fontsDict.set(PDFName.of('Helv'), formFont.ref);        // /Helv -> eingebettete Helvetica
+    drDict.set(PDFName.of('Font'), fontsDict);
+    acro.dict.set(PDFName.of('DR'), drDict);
+    acro.dict.set(PDFName.of('DA'), PDFString.of('/Helv 12 Tf 0 g'));  // Schrift 12pt, schwarz
 
     const page = pdf.addPage([A4.width, A4.height]);
 
-    // Form holen
-    const form = pdf.getForm();
-
-    // --- Fensteradresse (editierbares Feld) ---
+    // Fenster-Adressfeld (editierbar)
     const winX = mm2pt(WINDOW_MM.left);
     const winW = mm2pt(WINDOW_MM.width);
     const winH = mm2pt(WINDOW_MM.height);
@@ -98,41 +103,38 @@ T: +43 1 774 20 32 · E: info@wisehomes.at · W: wisehomes.at`;
 
     const addrField = form.createTextField('anschrift');
     addrField.enableMultiline();
-    addrField.setFontSize(12);
     addrField.setBorderWidth(0);
     addrField.addToPage(page, { x: winX, y: winY, width: winW, height: winH });
     addrField.setText(addressBlock);
+    // zusätzlich Widgets rendern (nicht zwingend, aber gut):
+    addrField.updateAppearances(formFont);
 
-    // ❗ GANZ WICHTIG: Default Appearances generieren (sonst 500 /DA-Fehler)
-    form.updateFieldAppearances(formFont);
-
-    // --- Brieftext layouten ---
+    // Brieftext
     const marginLeft = mm2pt(25);
     const marginRight = mm2pt(20);
     const contentWidth = A4.width - marginLeft - marginRight;
-    const size = 12;
-    const lineGap = 4;
+    const size = 12, lineGap = 4;
     let y = winY - mm2pt(12);
 
-    function drawParagraph(txt, bold = false) {
-      const font = bold ? fontBold : fontRegular;
+    const drawParagraph = (txt, bold = false) => {
+      const font = bold ? bodyBold : bodyFont;
       const paragraphs = txt.split('\n\n');
       for (const p of paragraphs) {
         const lines = wrapText(p, font, size, contentWidth);
         for (const line of lines) {
           const h = font.heightAtSize(size);
-          if (y - h < mm2pt(15)) y = A4.height - mm2pt(25); // simpler Umbruch
-          page.drawText(line, { x: marginLeft, y, size, font, color: rgb(0, 0, 0) });
+          if (y - h < mm2pt(15)) y = A4.height - mm2pt(25);
+          page.drawText(line, { x: marginLeft, y, size, font, color: rgb(0,0,0) });
           y -= h + lineGap;
         }
         y -= mm2pt(2);
       }
-    }
+    };
 
     drawParagraph('Sehr geehrte Damen und Herren,');
     drawParagraph('\n' + contentBody);
 
-    // --- Kontaktzeile (klickbare Links) ---
+    // Kontaktzeile (klickbare Links)
     let x = marginLeft;
     const baseY = y;
     const contact = [
@@ -141,19 +143,19 @@ T: +43 1 774 20 32 · E: info@wisehomes.at · W: wisehomes.at`;
       [' · W: ', 'wisehomes.at', 'https://wisehomes.at'],
     ];
     for (const [label, val, href] of contact) {
-      page.drawText(label, { x, y: baseY, size, font: fontRegular });
-      x += fontRegular.widthOfTextAtSize(label, size);
-      page.drawText(val,   { x, y: baseY, size, font: fontRegular, link: href });
-      x += fontRegular.widthOfTextAtSize(val, size);
+      page.drawText(label, { x, y: baseY, size, font: bodyFont });
+      x += bodyFont.widthOfTextAtSize(label, size);
+      page.drawText(val,   { x, y: baseY, size, font: bodyFont, link: href });
+      x += bodyFont.widthOfTextAtSize(val, size);
     }
 
     const bytes = await pdf.save();
-    return res.status(200).json({
+    res.status(200).json({
       fileName: 'wisehomes_brief.pdf',
       mimeType: 'application/pdf',
       data: Buffer.from(bytes).toString('base64'),
     });
   } catch (e) {
-    return res.status(500).json({ error: 'Internal error', details: String(e?.message || e) });
+    res.status(500).json({ error: 'Internal error', details: String(e?.message || e) });
   }
 };
