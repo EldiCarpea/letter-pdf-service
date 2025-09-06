@@ -1,5 +1,7 @@
-// /api/letter.js
-// POST JSON: { "adresse": "Bahnstraße 17", "plzOrt": "2404 Petronell", "text": "optional" }
+// /api/letter.js  (Vercel Serverless Function, ohne API-Key)
+//
+// POST JSON:
+// { "adresse": "Bahnstraße 17", "plzOrt": "2404 Petronell", "text": "optional" }
 // Aliase akzeptiert: address, Adresse, "plz/ort", PLZ/Ort, plz_ort, plzort, body
 
 const { PDFDocument, StandardFonts, rgb } = require('pdf-lib');
@@ -32,8 +34,14 @@ module.exports = async (req, res) => {
     if (req.method === 'OPTIONS') return res.status(200).end();
     if (req.method !== 'POST') return res.status(405).json({ error: 'Use POST with JSON body' });
 
-    // --- Eingaben ---
-    const b = req.body || {};
+    // --- Body sicher lesen (n8n kann manchmal String schicken) ---
+    let b = req.body;
+    if (typeof b === 'string') {
+      try { b = JSON.parse(b); } catch { b = {}; }
+    }
+    if (!b || typeof b !== 'object') b = {};
+
+    // --- Eingaben normalisieren ---
     const adresse =
       (b.adresse ?? b.address ?? b.Adresse ?? '').toString().trim();
     const plzOrt =
@@ -77,8 +85,10 @@ T: +43 1 774 20 32 · E: info@wisehomes.at · W: wisehomes.at`;
     const formFont    = await pdf.embedStandardFont(StandardFonts.Helvetica);
 
     const page = pdf.addPage([A4.width, A4.height]);
+
+    // Form holen und GLEICH die Default-Appearance setzen (wichtig!)
     const form = pdf.getForm();
-    // ❗ Kein form.updateFieldAppearances() hier – erst NACH dem Feldanlegen!
+    form.updateFieldAppearances(formFont);
 
     // --- Fensteradresse (editierbares Feld) ---
     const winX = mm2pt(WINDOW_MM.left);
@@ -90,12 +100,10 @@ T: +43 1 774 20 32 · E: info@wisehomes.at · W: wisehomes.at`;
     addrField.enableMultiline();
     addrField.setFontSize(12);
     addrField.setBorderWidth(0);
-
-    // Erst auf die Seite, dann Text setzen, DANN Appearances updaten
     addrField.addToPage(page, { x: winX, y: winY, width: winW, height: winH });
     addrField.setText(addressBlock);
-    // Wichtig: Appearance/DA generieren – sonst 500er
-    form.updateFieldAppearances(formFont);
+    // (Optional zusätzlich, schadet nicht)
+    // addrField.updateAppearances(formFont);
 
     // --- Brieftext layouten ---
     const marginLeft = mm2pt(25);
