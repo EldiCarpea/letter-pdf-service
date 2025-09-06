@@ -1,6 +1,4 @@
 // /api/letter.js  (Vercel Serverless Function, ohne API-Key)
-// POST JSON: { "adresse": "Bahnstraße 17", "plzOrt": "2404 Petronell", "text": "optional" }
-
 const {
   PDFDocument,
   StandardFonts,
@@ -9,10 +7,9 @@ const {
   PDFString,
 } = require('pdf-lib');
 
-// ---- Layout ----
 const mm2pt = (mm) => mm * 2.834645669;
 const A4 = { width: 595.28, height: 841.89 };
-const WINDOW_MM = { left: 20, top: 45, width: 90, height: 45 }; // DL/C6/5
+const WINDOW_MM = { left: 20, top: 45, width: 90, height: 45 };
 
 function wrapText(text, font, size, maxWidth) {
   const words = (text ?? '').replace(/\s+/g, ' ').trim().split(' ');
@@ -28,24 +25,20 @@ function wrapText(text, font, size, maxWidth) {
 
 module.exports = async (req, res) => {
   try {
-    // Healthcheck im Browser
     if (req.method === 'GET') {
       return res.status(200).json({ ok: true, usage: 'POST /api/letter { adresse, plzOrt, text? }' });
     }
 
-    // CORS + Methoden
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
     res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
     if (req.method === 'OPTIONS') return res.status(200).end();
     if (req.method !== 'POST') return res.status(405).json({ error: 'Use POST with JSON body' });
 
-    // Body robust parsen
     let b = req.body;
     if (typeof b === 'string') { try { b = JSON.parse(b); } catch { b = {}; } }
     if (!b || typeof b !== 'object') b = {};
 
-    // Inputs
     const adresse = (b.adresse ?? b.address ?? b.Adresse ?? '').toString().trim();
     const plzOrt  = (b['plz/ort'] ?? b['PLZ/Ort'] ?? b.plzOrt ?? b.plz_ort ?? b.plzort ?? '').toString().trim();
     const addressBlock = [(adresse || 'Bahnstraße 17'), (plzOrt || '2404 Petronell')].join('\n');
@@ -79,22 +72,23 @@ T: +43 1 774 20 32 · E: info@wisehomes.at · W: wisehomes.at`;
     const pdf = await PDFDocument.create();
     const bodyFont = await pdf.embedStandardFont(StandardFonts.TimesRoman);
     const bodyBold = await pdf.embedStandardFont(StandardFonts.TimesRomanBold);
-    const formFont = await pdf.embedStandardFont(StandardFonts.Helvetica); // wird als /Helv referenziert
+    const formFont = await pdf.embedStandardFont(StandardFonts.Helvetica); // /Helv
+
     const page = pdf.addPage([A4.width, A4.height]);
 
-    // Formular holen und **globale** Default-Appearance setzen
+    // Formular & globale Default-Appearance (/DA) setzen (low-level, stabil gegen /DA-Fehler)
     const form = pdf.getForm();
-    const acro = form.acroForm; // sollte existieren
+    const acro = form.acroForm;
     if (acro) {
       const drDict = pdf.context.obj({});
       const fontsDict = pdf.context.obj({});
-      fontsDict.set(PDFName.of('Helv'), formFont.ref);        // /Helv -> embedded Helvetica
+      fontsDict.set(PDFName.of('Helv'), formFont.ref);
       drDict.set(PDFName.of('Font'), fontsDict);
       acro.dict.set(PDFName.of('DR'), drDict);
-      acro.dict.set(PDFName.of('DA'), PDFString.of('/Helv 12 Tf 0 g')); // 12pt, schwarz
+      acro.dict.set(PDFName.of('DA'), PDFString.of('/Helv 12 Tf 0 g'));
     }
 
-    // Fenster-Adressfeld
+    // Fenster-Adressfeld (borderWidth in addToPage – KEIN setBorderWidth())
     const winX = mm2pt(WINDOW_MM.left);
     const winW = mm2pt(WINDOW_MM.width);
     const winH = mm2pt(WINDOW_MM.height);
@@ -102,16 +96,17 @@ T: +43 1 774 20 32 · E: info@wisehomes.at · W: wisehomes.at`;
 
     const addrField = form.createTextField('anschrift');
     addrField.enableMultiline();
-    addrField.setBorderWidth(0);
-    addrField.addToPage(page, { x: winX, y: winY, width: winW, height: winH });
+    addrField.addToPage(page, {
+      x: winX, y: winY, width: winW, height: winH,
+      borderWidth: 0  // << hier statt setBorderWidth()
+    });
     addrField.setText(addressBlock);
-
-    // **Feld-spezifische** Default-Appearance zusätzlich setzen (falls Vererbung ignoriert wird)
-    if (addrField && addrField.acroField && addrField.acroField.dict) {
+    // Feld-/Widget-Appearance rendern
+    addrField.updateAppearances(formFont);
+    // Sicherheit: Feld-eigene /DA setzen
+    if (addrField.acroField && addrField.acroField.dict) {
       addrField.acroField.dict.set(PDFName.of('DA'), PDFString.of('/Helv 12 Tf 0 g'));
     }
-    // Widgets rendern
-    addrField.updateAppearances(formFont);
 
     // Fließtext
     const marginLeft = mm2pt(25), marginRight = mm2pt(20);
@@ -137,7 +132,7 @@ T: +43 1 774 20 32 · E: info@wisehomes.at · W: wisehomes.at`;
     drawParagraph('Sehr geehrte Damen und Herren,');
     drawParagraph('\n' + contentBody);
 
-    // Kontaktzeile (Links)
+    // Kontaktzeile (klickbare Links)
     let x = marginLeft;
     const baseY = y;
     const contact = [
