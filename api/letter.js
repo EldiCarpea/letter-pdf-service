@@ -1,4 +1,6 @@
-// /api/letter.js — Vercel Serverless Function (ohne API-Key)
+// /api/letter.js — Vercel Serverless Function (Node 20, ohne API-Key)
+// POST JSON: { "adresse": "Bahnstraße 17", "plzOrt": "2404 Petronell", "text": "optional" }
+
 const {
   PDFDocument,
   StandardFonts,
@@ -7,23 +9,30 @@ const {
   PDFString,
 } = require('pdf-lib');
 
-const mm2pt = mm => mm * 2.834645669;
+const mm2pt = (mm) => mm * 2.834645669;
 const A4 = { width: 595.28, height: 841.89 };
 
-// Fenster-Position (DIN/AT üblich)
+// Fenster-Position (DL/C6/5, links). Bei Bedarf feinjustieren.
 const WINDOW_MM = { left: 20, top: 45, width: 90, height: 45 };
+
+// Logo (wird oben rechts platziert)
+const LOGO_URL = 'https://wisehomes.at/wp-content/uploads/2025/05/wisehomes-color@0.5x.png';
+const LOGO_WIDTH_PT = 120; // Breite in pt (~42mm)
 
 module.exports = async (req, res) => {
   try {
     if (req.method === 'GET') {
       return res.status(200).json({ ok: true, usage: 'POST /api/letter { adresse, plzOrt, text? }' });
     }
+
+    // CORS
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
     res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
     if (req.method === 'OPTIONS') return res.status(200).end();
     if (req.method !== 'POST') return res.status(405).json({ error: 'Use POST with JSON body' });
 
+    // Body robust parsen
     let b = req.body;
     if (typeof b === 'string') { try { b = JSON.parse(b); } catch { b = {}; } }
     if (!b || typeof b !== 'object') b = {};
@@ -54,63 +63,77 @@ Mit besten Grüßen
 Eldi Neziri
 Projektberater Wohnbau
 T: +43 1 774 20 32 · E: info@wisehomes.at · W: wisehomes.at`;
-
     const contentBody = (b.text ?? b.body ?? defaultBody).toString();
 
     // === PDF ===
     const pdf = await PDFDocument.create();
-    const times = await pdf.embedStandardFont(StandardFonts.TimesRoman);
-    const timesBold = await pdf.embedStandardFont(StandardFonts.TimesRomanBold);
+    const helv = await pdf.embedStandardFont(StandardFonts.Helvetica);
+    const helvBold = await pdf.embedStandardFont(StandardFonts.HelveticaBold);
     const page = pdf.addPage([A4.width, A4.height]);
 
-    // AcroForm & Default-Appearance auf Times setzen (robuster /DA-Fix)
+    // Formular + Default-Appearance (/DA) auf Helvetica (modern, einheitlich)
     const form = pdf.getForm();
     const acro = form.acroForm;
     if (acro) {
       const dr = pdf.context.obj({});
       const fonts = pdf.context.obj({});
-      fonts.set(PDFName.of('TiRo'), times.ref); // /TiRo -> TimesRoman
+      fonts.set(PDFName.of('Helv'), helv.ref);                   // /Helv -> Helvetica
       dr.set(PDFName.of('Font'), fonts);
       acro.dict.set(PDFName.of('DR'), dr);
-      acro.dict.set(PDFName.of('DA'), PDFString.of('/TiRo 12 Tf 0 g')); // 12pt, schwarz
+      acro.dict.set(PDFName.of('DA'), PDFString.of('/Helv 12 Tf 0 g'));
     }
 
-    // Fenster (mit Überschrift)
+    // Logo laden & platzieren (top-right, oberhalb des Fensters)
+    try {
+      const r = await fetch(LOGO_URL);
+      if (r.ok) {
+        const arr = new Uint8Array(await r.arrayBuffer());
+        const img = await pdf.embedPng(arr);
+        const scale = LOGO_WIDTH_PT / img.width;
+        const w = img.width * scale, h = img.height * scale;
+        const x = A4.width - mm2pt(20) - w;                      // rechter Rand 20mm
+        const y = A4.height - mm2pt(15) - h;                     // oberer Rand 15mm
+        page.drawImage(img, { x, y, width: w, height: h });
+      }
+    } catch (_) {
+      // Logo optional – bei Fehlern ignorieren
+    }
+
+    // Fenster mit Heading + editierbarer Adresse
     const winX = mm2pt(WINDOW_MM.left);
     const winW = mm2pt(WINDOW_MM.width);
     const winH = mm2pt(WINDOW_MM.height);
     const winY = A4.height - mm2pt(WINDOW_MM.top) - winH;
 
-    // Überschrift im Fenster
+    // Heading im Fenster
     const heading = 'An die neuen Eigentümer';
     const headingSize = 12;
-    const headingY = winY + winH - headingSize - 2;
-    page.drawText(heading, { x: winX, y: headingY, size: headingSize, font: timesBold, color: rgb(0,0,0) });
+    page.drawText(heading, { x: winX, y: winY + winH - headingSize - 1, size: headingSize, font: helvBold });
 
-    // Editierbares Adressfeld (Times als /DA)
-    const fieldPad = 2;
-    const fieldH = winH - (headingSize + fieldPad);
+    // Adressfeld
+    const fieldTopPadding = 3;
+    const fieldH = winH - (headingSize + fieldTopPadding);
     const addrField = form.createTextField('anschrift');
     addrField.enableMultiline();
     addrField.addToPage(page, { x: winX, y: winY, width: winW, height: fieldH, borderWidth: 0 });
     const addressBlock = [(adresse || 'Bahnstraße 17'), (plzOrt || '2404 Petronell')].join('\n');
     addrField.setText(addressBlock);
     if (addrField.acroField && addrField.acroField.dict) {
-      addrField.acroField.dict.set(PDFName.of('DA'), PDFString.of('/TiRo 12 Tf 0 g'));
+      addrField.acroField.dict.set(PDFName.of('DA'), PDFString.of('/Helv 12 Tf 0 g'));
     }
+    addrField.updateAppearances(helv);
 
-    // Text-Layout-Parameter
+    // Layout-Parameter
     const size = 12;
-    const lineGap = 2;                     // zusätzlicher Zeilenabstand
-    const lineStep = () => times.heightAtSize(size) + lineGap;
-    const marginLeft = mm2pt(25);
-    const marginRight = mm2pt(20);
+    const lineGap = 3; // moderner, luftiger
+    const lineStep = () => helv.heightAtSize(size) + lineGap;
+    const marginLeft = mm2pt(25), marginRight = mm2pt(20);
     const contentWidth = A4.width - marginLeft - marginRight;
 
-    // etwas mehr Luft unter dem Fenster
-    let y = winY - mm2pt(15);
+    // Start Y (unter Fenster + Luft)
+    let y = winY - mm2pt(18);
 
-    // Textumbruch
+    // Helfer: weicher Umbruch
     const wrap = (text, font, maxWidth) => {
       const words = (text ?? '').replace(/\s+/g, ' ').trim().split(' ');
       const lines = []; let line = '';
@@ -123,58 +146,100 @@ T: +43 1 774 20 32 · E: info@wisehomes.at · W: wisehomes.at`;
       return lines;
     };
 
-    // Absätze mit Bullet-Erkennung
-    const drawParagraph = (txt, bold = false) => {
-      const font = bold ? timesBold : times;
+    // Zeichnet Absätze, erkennt Überschriften/Ergebnis/Bullets
+    const drawParagraphsSmart = (txt) => {
       const paras = txt.split('\n\n');
-      for (const pRaw of paras) {
-        const linesRaw = pRaw.split('\n');
-        for (let i = 0; i < linesRaw.length; i++) {
-          const line = linesRaw[i].trim();
-          if (!line) { y -= lineStep(); continue; }
 
-          // Bullet-Zeilen erkennen: beginnen mit "• "
-          if (line.startsWith('•')) {
+      for (const raw of paras) {
+        const lines = raw.split('\n').map(s => s.trim()).filter(Boolean);
+        if (!lines.length) { y -= lineStep(); continue; }
+
+        for (let i = 0; i < lines.length; i++) {
+          let line = lines[i];
+
+          // fette Einzeiler
+          const isBoldOneLiner =
+            line === 'herzlichen Glückwunsch zum Auktionszuschlag!' ||
+            line === 'Was wir für Sie unkompliziert aus einer Hand übernehmen:' ||
+            line.startsWith('Ergebnis:');
+
+          // Bullets mit fett gesetztem „Bereichstitel“
+          if (line.startsWith('• ')) {
             const label = '•';
-            const text = line.replace(/^•\s*/, '');
+            const rest = line.replace(/^•\s*/, '');
             const bulletIndent = mm2pt(6);
-            // Bullet
-            page.drawText(label, { x: marginLeft, y, size, font: timesBold });
-            // Eingezogene Zeile
-            const xStart = marginLeft + bulletIndent;
-            const w = contentWidth - bulletIndent;
-            const wrapped = wrap(text, font, w);
-            for (const l of wrapped) {
-              page.drawText(l, { x: xStart, y, size, font, color: rgb(0,0,0) });
+
+            // Bereichstitel fett, wenn nur ein Wortpaar? -> wir setzen einfach die erste Zeile fett
+            const wrapped = wrap(rest, helv, contentWidth - bulletIndent);
+            if (wrapped.length) {
+              // erste Zeile fett
+              page.drawText(label, { x: marginLeft, y, size, font: helvBold });
+              page.drawText(wrapped[0], { x: marginLeft + bulletIndent, y, size, font: helvBold });
+              y -= lineStep();
+              // weitere Zeilen normal
+              for (let k = 1; k < wrapped.length; k++) {
+                page.drawText(wrapped[k], { x: marginLeft + bulletIndent, y, size, font: helv });
+                y -= lineStep();
+              }
+            }
+            continue;
+          }
+
+          // Ergebnis: – fett label, rest normal
+          if (line.startsWith('Ergebnis:')) {
+            const label = 'Ergebnis: ';
+            const rest = line.replace(/^Ergebnis:\s*/, '');
+            page.drawText(label, { x: marginLeft, y, size, font: helvBold });
+            const x2 = marginLeft + helvBold.widthOfTextAtSize(label, size);
+            const w2 = contentWidth - (x2 - marginLeft);
+            const wrapped = wrap(rest, helv, w2);
+            for (const w of wrapped) {
+              page.drawText(w, { x: x2, y, size, font: helv });
               y -= lineStep();
             }
-          } else {
-            // normale Zeile
-            const wrapped = wrap(line, font, contentWidth);
-            for (const l of wrapped) {
-              page.drawText(l, { x: marginLeft, y, size, font, color: rgb(0,0,0) });
-              y -= lineStep();
-            }
+            continue;
+          }
+
+          // normale oder fette Zeilen
+          const font = isBoldOneLiner ? helvBold : helv;
+          const wrapped = wrap(line, font, contentWidth);
+          for (const w of wrapped) {
+            page.drawText(w, { x: marginLeft, y, size, font });
+            y -= lineStep();
           }
         }
-        y -= lineStep(); // Absatzabstand
+
+        // Absatzabstand
+        y -= lineGap;
       }
     };
 
-    drawParagraph('Sehr geehrte Damen und Herren,');
-    drawParagraph('\n' + contentBody);
+    // Anrede + Haupttext
+    const intro = 'Sehr geehrte Damen und Herren,';
+    for (const w of wrap(intro, helv, contentWidth)) {
+      page.drawText(w, { x: marginLeft, y, size, font: helv });
+      y -= lineStep();
+    }
+    y -= lineStep(); // Leerzeile
+    drawParagraphsSmart('\n' + contentBody);
 
-    // Kontaktzeilen (untereinander, klickbar)
+    // dünne Trennlinie vor Kontakt
+    y -= mm2pt(2);
+    page.drawRectangle({ x: marginLeft, y, width: contentWidth, height: 0.5, color: rgb(0,0,0) });
+    y -= mm2pt(4);
+
+    // Kontakt (untereinander, klickbar)
     const contact = [
-      ['T: ', '+43 1 774 20 32', 'tel:+4317742032'],
-      ['E: ', 'info@wisehomes.at', 'mailto:info@wisehomes.at'],
-      ['W: ', 'wisehomes.at', 'https://wisehomes.at'],
+      ['Telefon', '+43 1 774 20 32', 'tel:+4317742032'],
+      ['E-Mail', 'info@wisehomes.at', 'mailto:info@wisehomes.at'],
+      ['Web', 'wisehomes.at', 'https://wisehomes.at'],
     ];
     for (const [label, val, href] of contact) {
       if (y < mm2pt(20)) break;
-      page.drawText(label, { x: marginLeft, y, size, font: times });
-      const xVal = marginLeft + times.widthOfTextAtSize(label, size);
-      page.drawText(val, { x: xVal, y, size, font: times, link: href });
+      const lab = `${label}: `;
+      page.drawText(lab, { x: marginLeft, y, size, font: helvBold });
+      const xVal = marginLeft + helvBold.widthOfTextAtSize(lab, size);
+      page.drawText(val, { x: xVal, y, size, font: helv, link: href });
       y -= lineStep();
     }
 
