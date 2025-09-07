@@ -25,7 +25,7 @@ const SPACING = {
   bottomMarginMM: 24,         // unterer Rand (mm)
 
   // Feste Schriftgröße für Fließtext UND Adressfeld (exakt gleich)
-  baseFontSize: 11,           // z.B. 10.5 | 11 | 11.25
+  baseFontSize: 12,           // z.B. 10.5 | 11 | 11.25
 
   // Start den Text N Zeilen "höher" (näher ans Fenster)
   startUpLines: 2,            // 0 = Standard; 2 = zwei Zeilen höher starten
@@ -213,7 +213,8 @@ module.exports = async (req, res) => {
             y -= mm2pt(SPACING.signatureGapMM); // Unterschriftsfläche
           }
 
-          const isBold = ln === 'herzlichen Glückwunsch zum Auktionszuschlag.' || isHeading;
+          // Nur die Überschrift fett – NICHT die Glückwunsch-Zeile
+          const isBold = isHeading;;
           if (!drawWrapped(ln, isBold ? helvBold : helv)) break;
 
           if (isHeading) { y -= SPACING.headingAfterGapPt; }
