@@ -24,7 +24,7 @@ const SPACING = {
   bulletIndentMM: 6,          // Bullet-Einzug (mm)
   topBelowWindowMM: 28,       // Luft unter dem Fenster (mm)
   bottomMarginMM: 24,         // unterer Seitenrand (mm)
-  sizeCandidates: [11.25, 11, 10.75, 10.5, 10.25, 10, 9.75, 9.5], // Auto-Fit (eine Stufe größer startend)
+  sizeCandidates: [10], // Auto-Fit (eine Stufe größer startend)
   addressFontPt: 10,          // Schriftgröße im Fenster
   signatureGapMM: 18,         // Abstand vor Unterschrift (mm)
   headingBeforeGapPt: 6,      // Abstand VOR „Was wir …“
