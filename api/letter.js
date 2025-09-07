@@ -31,7 +31,7 @@ const SPACING = {
   startUpLines: 2,            // 0 = Standard; 2 = zwei Zeilen höher starten
 
   signatureGapMM: 12,         // Unterschriftsfläche vor "Eldi Neziri" (mm)
-  headingBeforeGapPt: 16,      // kleiner Abstand VOR "Was wir …"
+  headingBeforeGapPt: 14,      // kleiner Abstand VOR "Was wir …"
   headingAfterGapPt: 6,       // kleiner Abstand NACH "Was wir …"
 };
 
