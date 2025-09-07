@@ -1,13 +1,7 @@
 // /api/letter.js — Vercel Serverless Function (Node 20, ohne API-Key)
 // POST JSON: { "adresse": "Bahnstraße 17", "plzOrt": "2404 Petronell", "text": "optional override" }
 
-const {
-  PDFDocument,
-  StandardFonts,
-  rgb,
-  PDFName,
-  PDFString,
-} = require('pdf-lib');
+const { PDFDocument, StandardFonts, rgb, PDFName, PDFString } = require('pdf-lib');
 
 const mm2pt = (mm) => mm * 2.834645669;
 const A4 = { width: 595.28, height: 841.89 };
@@ -17,16 +11,18 @@ const WINDOW_MM = { left: 20, top: 45, width: 90, height: 45 };
 
 // Spacing & Typografie
 const SPACING = {
-  lineGap: 5,               // Zeilenabstand (pt)
-  paragraphGap: 10,         // Absatzabstand (pt)
-  bulletGap: 6,             // Abstand nach Bullet-Block (pt)
-  bulletIndentMM: 6,        // Bullet-Einzug (mm)
-  topBelowWindowMM: 28,     // Luft unter dem Fenster (mm)
-  bottomMarginMM: 24,       // unterer Seitenrand (mm)
-  sizeCandidates: [11, 10.75, 10.5, 10.25, 10, 9.75, 9.5], // Auto-Fit
-  addressFontPt: 10,        // Schriftgröße im Fenster
-  signatureGapMM: 18,       // Abstand vor Unterschrift (mm)
-  headingAfterGapPt: 6      // kleiner Abstand NACH „Was wir …“
+  lineGap: 5,                 // Zeilenabstand (pt)
+  paragraphGap: 10,           // Absatzabstand (pt)
+  bulletGap: 6,               // Abstand nach Bullet-Block (pt)
+  bulletIndentMM: 6,          // Bullet-Einzug (mm)
+  topBelowWindowMM: 28,       // Luft unter dem Fenster (mm)
+  bottomMarginMM: 24,         // unterer Seitenrand (mm)
+  // ▼ Startet jetzt eine Stufe größer (11.25) und arbeitet in 0.25er-Schritten herunter
+  sizeCandidates: [11.25, 11, 10.75, 10.5, 10.25, 10, 9.75, 9.5],
+  addressFontPt: 10,          // Schriftgröße im Fenster
+  signatureGapMM: 18,         // Abstand vor Unterschrift (mm)
+  headingBeforeGapPt: 6,      // kleiner Abstand VOR „Was wir …“
+  headingAfterGapPt: 6        // kleiner Abstand NACH „Was wir …“
 };
 
 // Logo
@@ -124,13 +120,13 @@ module.exports = async (req, res) => {
     const marginRight = mm2pt(22);
     const contentWidth = A4.width - marginLeft - marginRight;
 
-    // Editierbares Fenster – zwei Leerzeilen OBEN, dann Eigentümer, dann Adresse
+    // Editierbares Fenster – **zwei Leerzeilen oben**, dann Eigentümer, dann Adresse
     const addrField = form.createTextField('anschrift');
     addrField.enableMultiline();
     addrField.addToPage(page, { x: winX, y: winY, width: winW, height: winH, borderWidth: 0 });
     const editableBlock = [
-      '',                         // 1. Leerzeile oben
-      '',                         // 2. Leerzeile oben
+      '', // 1. Leerzeile oben
+      '', // 2. Leerzeile oben
       'An die neuen Eigentümer',
       (adresse || 'Bahnstraße 17'),
       (plzOrt  || '2404 Petronell')
@@ -176,6 +172,15 @@ module.exports = async (req, res) => {
         if (!lines.length) { y -= lineStep; continue; }
 
         for (const ln of lines) {
+
+          const isHeading = ln.startsWith('Was wir für Sie aus einer Hand übernehmen:');
+
+          // **Abstand VOR der Überschrift**
+          if (isHeading) {
+            if (y - SPACING.headingBeforeGapPt < bottomMargin) return false;
+            y -= SPACING.headingBeforeGapPt;
+          }
+
           // Bullets
           if (ln.startsWith('• ')) {
             const rest = ln.replace(/^•\s*/, '');
@@ -204,12 +209,12 @@ module.exports = async (req, res) => {
 
           const isBold =
             ln === 'herzlichen Glückwunsch zum Auktionszuschlag.' ||
-            ln.startsWith('Was wir für Sie aus einer Hand übernehmen:');
+            isHeading;
 
           if (!drawWrapped(ln, isBold ? helvBold : helv)) return false;
 
-          // **Kleiner Abstand NACH der Überschrift "Was wir …"**
-          if (ln.startsWith('Was wir für Sie aus einer Hand übernehmen:')) {
+          // **Abstand NACH der Überschrift**
+          if (isHeading) {
             y -= SPACING.headingAfterGapPt;
           }
         }
