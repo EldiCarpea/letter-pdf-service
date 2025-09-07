@@ -19,7 +19,7 @@ const SPACING = {
   bottomMarginMM: 24,         // unterer Seitenrand (mm)
 
   // >>> Feste Schriftgröße für Text & Adressfeld (exakt gleich)
-  baseFontSize: 10.5,           // HIER anpassen: z.B. 10.5, 11.25, 12
+  baseFontSize: 9,           // HIER anpassen: z.B. 10.5, 11.25, 12
 
   signatureGapMM: 18,         // Abstand vor Unterschrift (mm)
   headingBeforeGapPt: 6,      // Abstand VOR „Was wir …“
