@@ -25,14 +25,15 @@ const SPACING = {
   bottomMarginMM: 24,       // unterer Seitenrand (mm)
   sizeCandidates: [11, 10.75, 10.5, 10.25, 10, 9.75, 9.5], // Auto-Fit
   addressFontPt: 10,        // Schriftgröße im Fenster
-  signatureGapMM: 18        // **neuer** Abstand vor Unterschrift (mm)
+  signatureGapMM: 18,       // Abstand vor Unterschrift (mm)
+  headingAfterGapPt: 6      // kleiner Abstand NACH „Was wir …“
 };
 
 // Logo
 const LOGO_URL = 'https://wisehomes.at/wp-content/uploads/2025/05/wisehomes-color@0.5x.png';
 const LOGO_WIDTH_PT = 110; // ~39 mm
 
-// Dein Text
+// Text
 const DEFAULT_TEXT = `Sehr geehrte Damen und Herren,
 
 herzlichen Glückwunsch zum Auktionszuschlag.
@@ -123,13 +124,14 @@ module.exports = async (req, res) => {
     const marginRight = mm2pt(22);
     const contentWidth = A4.width - marginLeft - marginRight;
 
-    // Editierbares Fenster – **Adresse eine Zeile tiefer** (Leerzeile nach Überschrift)
+    // Editierbares Fenster – zwei Leerzeilen OBEN, dann Eigentümer, dann Adresse
     const addrField = form.createTextField('anschrift');
     addrField.enableMultiline();
     addrField.addToPage(page, { x: winX, y: winY, width: winW, height: winH, borderWidth: 0 });
     const editableBlock = [
+      '',                         // 1. Leerzeile oben
+      '',                         // 2. Leerzeile oben
       'An die neuen Eigentümer',
-      '',                                      // << Leerzeile eingefügt
       (adresse || 'Bahnstraße 17'),
       (plzOrt  || '2404 Petronell')
     ].join('\n');
@@ -174,11 +176,6 @@ module.exports = async (req, res) => {
         if (!lines.length) { y -= lineStep; continue; }
 
         for (const ln of lines) {
-          // **Extra Absatz vor der Zeile "Was wir für Sie aus einer Hand übernehmen:"**
-          if (ln.startsWith('Was wir für Sie aus einer Hand übernehmen:')) {
-            y -= SPACING.paragraphGap; // Leerzeile/Absatz davor
-          }
-
           // Bullets
           if (ln.startsWith('• ')) {
             const rest = ln.replace(/^•\s*/, '');
@@ -200,7 +197,7 @@ module.exports = async (req, res) => {
             continue;
           }
 
-          // **Unterschriftsfläche** – großer Abstand **vor "Eldi Neziri"**
+          // Unterschriftsfläche – großer Abstand vor "Eldi Neziri"
           if (ln === 'Eldi Neziri') {
             y -= mm2pt(SPACING.signatureGapMM);
           }
@@ -210,6 +207,11 @@ module.exports = async (req, res) => {
             ln.startsWith('Was wir für Sie aus einer Hand übernehmen:');
 
           if (!drawWrapped(ln, isBold ? helvBold : helv)) return false;
+
+          // **Kleiner Abstand NACH der Überschrift "Was wir …"**
+          if (ln.startsWith('Was wir für Sie aus einer Hand übernehmen:')) {
+            y -= SPACING.headingAfterGapPt;
+          }
         }
         // Absatz-Abstand
         y -= SPACING.paragraphGap;
@@ -217,7 +219,7 @@ module.exports = async (req, res) => {
       return true;
     }
 
-    // Auto-Fit: teste Größen, bis alles auf eine Seite passt
+    // Auto-Fit
     let picked = SPACING.sizeCandidates[SPACING.sizeCandidates.length - 1];
     for (const s of SPACING.sizeCandidates) { if (drawSmart(s, true)) { picked = s; break; } }
     drawSmart(picked, false);
