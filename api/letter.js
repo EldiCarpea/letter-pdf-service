@@ -44,8 +44,7 @@ const DEFAULT_TEXT = `Sehr geehrte Damen und Herren,
 
 herzlichen Glückwunsch zum Auktionszuschlag.
 
-Wir sind Wisehomes.at, ein Full-Service-Bauträger aus Wien mit Schwerpunkt auf
-Ziegelmassivbau von Einfamilien- und Doppelhäusern in Wien, Niederösterreich und Burgenland.
+Wir sind Wisehomes, ein Full-Service-Bauträger aus Wien mit Fokus auf Ziegel-Massivbau von Einfamilien- und Doppelhäusern in Wien, Niederösterreich und Burgenland.
 Wir scouten regelmäßig vielversprechende Projekte auf öffentlichen Auktions- und Amtsportalen.
 Dabei ist uns diese Liegenschaft besonders positiv aufgefallen. Da sie fachlich hervorragend zu
 uns passt, haben wir uns entschieden, Sie hiermit direkt zu kontaktieren, in der Überzeugung, dass hier beste Voraussetzungen für eine erfolgreiche Zusammenarbeit bestehen.
@@ -54,15 +53,15 @@ Was wir für Sie aus einer Hand übernehmen:
 • Bau & Übergabe: Koordination aller Gewerke, Qualitätssicherung, termin- und kostentreu – schlüsselfertige Übergabe ohne Überraschungen.
 • Finanzierung & Betreuung: klare Kostenstruktur, Zahlungsplan, Förderungen, Begleitung auch nach der Übergabe – Sicherheit und ein fester Ansprechpartner.
 
-Unser Vorschlag: kurzes, kostenloses Erstgespräch (vor Ort oder online). Im Anschluss erhalten Sie eine kompakte Einschätzung mit Optionen, Budgetrahmen und nächsten Schritten.
+Unser Angebot: ein kostenloses Erstgespräch (vor Ort oder online). Anschließend erhalten Sie eine kurze Einschätzung mit Optionen, Budgetrahmen und nächsten Schritten.
 
-Wenn das für Sie interessant klingt, teilen Sie uns bitte Ihre Wunschzeiten mit – wir richten uns nach Ihrem Kalender. Sie erreichen uns jederzeit per Mail oder telefonisch.
+Wenn das für Sie interessant klingt, nennen Sie uns einfach 2–3 Wunschtermine – wir richten uns nach Ihrem Kalender. Sie erreichen uns jederzeit per E-Mail info@wisehomes.at oder telefonisch +43 1 774 20 32.
 
 Mit besten Grüßen
 Eldi Neziri
-Projektberater Wohnbau
+Projektberater | Wohnbau
 T +43 1 774 20 32
-E info@wisehomes.at · wisehomes.at`;
+E eldi.neziri@wisehomes.at · wisehomes.at`;
 
 module.exports = async (req, res) => {
   try {
