@@ -31,7 +31,7 @@ const SPACING = {
   startUpLines: 2,            // 0 = Standard; 2 = zwei Zeilen höher starten
 
   signatureGapMM: 12,         // Unterschriftsfläche vor "Eldi Neziri" (mm)
-  headingBeforeGapPt: 14,      // kleiner Abstand VOR "Was wir …"
+  headingBeforeGapPt: 14,     // kleiner Abstand VOR "Was wir …"
   headingAfterGapPt: 6,       // kleiner Abstand NACH "Was wir …"
 };
 
@@ -89,7 +89,7 @@ module.exports = async (req, res) => {
     const helvBold = await pdf.embedStandardFont(StandardFonts.HelveticaBold);
     const page = pdf.addPage([A4.width, A4.height]);
 
-    // AcroForm: Ressourcen setzen, einheitliches /DA, NeedAppearances = false (wir rendern selbst)
+    // AcroForm: Ressourcen setzen, einheitliches /DA, NeedAppearances = false
     const form = pdf.getForm();
     const acro = form.acroForm;
     if (acro) {
@@ -111,7 +111,7 @@ module.exports = async (req, res) => {
         const scale = LOGO_WIDTH_PT / img.width;
         const w = img.width * scale, h = img.height * scale;
         const x = A4.width - mm2pt(20) - w;     // rechter Rand 20 mm
-      const y = A4.height - mm2pt(16) - h;      // oberer Rand 16 mm
+        const y = A4.height - mm2pt(16) - h;    // oberer Rand 16 mm
         page.drawImage(img, { x, y, width: w, height: h });
       }
     } catch {}
@@ -167,7 +167,7 @@ module.exports = async (req, res) => {
         - mm2pt(WINDOW_MM.top)
         - winH
         - mm2pt(SPACING.topBelowWindowMM)
-        + SPACING.startUpLines * lineStep; // << zwei Zeilen höher starten
+        + SPACING.startUpLines * lineStep;
 
       const drawWrapped = (ln, font = helv) => {
         const lines = wrap(ln, font, size, contentWidth);
@@ -188,19 +188,47 @@ module.exports = async (req, res) => {
           const isHeading = ln.startsWith('Was wir für Sie aus einer Hand übernehmen:');
           if (isHeading) { y -= SPACING.headingBeforeGapPt; }
 
-          // Bullets
+          // Bullets: nur der Titel bis ":" fett, Rest normal
           if (ln.startsWith('• ')) {
             const rest = ln.replace(/^•\s*/, '');
-            const wrapped = wrap(rest, helv, size, contentWidth - bulletIndent);
+            const m = rest.match(/^([^:]+:\s*)(.*)$/);
+            const title = m ? m[1] : rest; // inkl. ": "
+            const body  = m ? m[2] : '';
 
+            // Bullet-Punkt
             page.drawText('•', { x: marginLeft, y, size, font: helvBold });
-            page.drawText(wrapped[0] || '', { x: marginLeft + bulletIndent, y, size, font: helvBold });
+
+            // Titel fett
+            const xText = marginLeft + bulletIndent;
+            page.drawText(title, { x: xText, y, size, font: helvBold });
+
+            // Verbleibende Breite in der ersten Zeile für den Body
+            const titleWidth = helvBold.widthOfTextAtSize(title, size);
+            const firstLineX = xText + titleWidth;
+            const firstLineW = Math.max(0, contentWidth - bulletIndent - titleWidth);
+
+            // Body – erster Zeilenrest passt noch in die erste Zeile
+            const words = body.trim() ? body.trim().split(/\s+/) : [];
+            let firstBody = '';
+            while (
+              words.length &&
+              helv.widthOfTextAtSize(firstBody ? firstBody + ' ' + words[0] : words[0], size) <= firstLineW
+            ) {
+              firstBody = firstBody ? firstBody + ' ' + words.shift() : words.shift();
+            }
+            if (firstBody) {
+              page.drawText(firstBody, { x: firstLineX, y, size, font: helv });
+            }
             y -= lineStep;
 
-            for (let i = 1; i < wrapped.length; i++) {
-              page.drawText(wrapped[i], { x: marginLeft + bulletIndent, y, size, font: helv });
+            // Weitere Zeilen des Bodys normal umbrechen
+            const remaining = words.join(' ');
+            const wrappedRest = wrap(remaining, helv, size, contentWidth - bulletIndent);
+            for (const l of wrappedRest) {
+              page.drawText(l, { x: marginLeft + bulletIndent, y, size, font: helv });
               y -= lineStep;
             }
+
             y -= SPACING.bulletGap;
             continue;
           }
@@ -210,7 +238,7 @@ module.exports = async (req, res) => {
           }
 
           // Nur die Überschrift fett – NICHT die Glückwunsch-Zeile
-          const isBold = isHeading;;
+          const isBold = isHeading;
           if (!drawWrapped(ln, isBold ? helvBold : helv)) break;
 
           if (isHeading) { y -= SPACING.headingAfterGapPt; }
@@ -222,7 +250,7 @@ module.exports = async (req, res) => {
     // Brief setzen
     drawSmart(SPACING.baseFontSize);
 
-    // Feld-Appearance NACH dem Zeichnen final erzeugen (bleibt editierbar & identische Optik)
+    // Feld-Appearance final erzeugen
     addrField.updateAppearances(helv);
 
     // Antwort
