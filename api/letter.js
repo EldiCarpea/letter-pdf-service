@@ -44,8 +44,7 @@ const DEFAULT_TEXT = `Sehr geehrte Damen und Herren,
 
 herzlichen Glückwunsch zum Auktionszuschlag.
 
-Wir sind Wisehomes, ein Full-Service-Bauträger aus Wien mit Fokus auf Ziegel-Massivbau von Einfamilien- und Doppelhäusern in Wien, Niederösterreich und Burgenland.
-Wir sichten laufend potenzielle Projekte auf öffentlichen Auktions- und Amtsportalen, diese Liegenschaft ist uns dabei besonders aufgefallen. Da sie fachlich sehr gut zu unserem Profil passt, melden wir uns direkt bei Ihnen, in der Überzeugung, dass hier gute Voraussetzungen für eine Zusammenarbeit bestehen.
+Wir sind Wisehomes, ein Full-Service-Bauträger aus Wien mit Fokus auf Ziegel-Massivbau von Einfamilien- und Doppelhäusern in Wien, Niederösterreich und Burgenland. Wir sichten laufend potenzielle Projekte auf öffentlichen Auktions- und Amtsportalen, diese Liegenschaft ist uns dabei besonders aufgefallen. Da sie fachlich sehr gut zu unserem Profil passt, melden wir uns direkt bei Ihnen, in der Überzeugung, dass hier gute Voraussetzungen für eine Zusammenarbeit bestehen.
 Was wir für Sie aus einer Hand übernehmen:
 • Planung & Design: Bestandsaufnahme, Bauordnungs-/Bebauungscheck, Varianten bis zur Einreichung – ein stimmiges, genehmigungsfähiges Konzept.
 • Bau & Übergabe: Koordination aller Gewerke, Qualitätssicherung, termin- und kostentreu – schlüsselfertige Übergabe ohne Überraschungen.
