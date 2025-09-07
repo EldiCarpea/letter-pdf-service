@@ -49,7 +49,7 @@ Ziegelmassivbau von Einfamilien- und Doppelhäusern in Wien, Niederösterreich u
 Wir scouten regelmäßig vielversprechende Projekte auf öffentlichen Auktions- und Amtsportalen.
 Dabei ist uns diese Liegenschaft besonders positiv aufgefallen. Da sie fachlich hervorragend zu
 uns passt, haben wir uns entschieden, Sie hiermit direkt zu kontaktieren, in der Überzeugung, dass hier
-beste Voraussetzungen für eine starke und erfolgreiche Zusammenarbeit bestehen.
+beste Voraussetzungen für eine erfolgreiche Zusammenarbeit bestehen.
 Was wir für Sie aus einer Hand übernehmen:
 • Planung & Design: Bestandsaufnahme, Bauordnungs-/Bebauungscheck, Varianten bis zur Einreichung – ein stimmiges, genehmigungsfähiges Konzept.
 • Bau & Übergabe: Koordination aller Gewerke, Qualitätssicherung, termin- und kostentreu – schlüsselfertige Übergabe ohne Überraschungen.
