@@ -48,7 +48,7 @@ Wir sind Wisehomes.at, ein Full-Service-Bauträger aus Wien mit Schwerpunkt auf
 Ziegelmassivbau von Einfamilien- und Doppelhäusern in Wien, Niederösterreich und Burgenland.
 Wir scouten regelmäßig vielversprechende Projekte auf öffentlichen Auktions- und Amtsportalen.
 Dabei ist uns diese Liegenschaft besonders positiv aufgefallen. Da sie fachlich hervorragend zu
-uns passt, haben wir uns entschieden, Sie direkt zu kontaktieren – in der Überzeugung, dass hier
+uns passt, haben wir uns entschieden, Sie hiermit direkt zu kontaktieren, in der Überzeugung, dass hier
 beste Voraussetzungen für eine erfolgreiche Zusammenarbeit bestehen.
 Was wir für Sie aus einer Hand übernehmen:
 • Planung & Design: Bestandsaufnahme, Bauordnungs-/Bebauungscheck, Varianten bis zur Einreichung – ein stimmiges, genehmigungsfähiges Konzept.
