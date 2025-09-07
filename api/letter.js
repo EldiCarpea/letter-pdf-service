@@ -1,7 +1,14 @@
 // /api/letter.js — Vercel Serverless Function (Node 20, ohne API-Key)
 // POST JSON: { "adresse": "Bahnstraße 17", "plzOrt": "2404 Petronell", "text": "optional override" }
 
-const { PDFDocument, StandardFonts, rgb, PDFName, PDFString } = require('pdf-lib');
+const {
+  PDFDocument,
+  StandardFonts,
+  rgb,
+  PDFName,
+  PDFString,
+  PDFBool,
+} = require('pdf-lib');
 
 const mm2pt = (mm) => mm * 2.834645669;
 const A4 = { width: 595.28, height: 841.89 };
@@ -17,19 +24,18 @@ const SPACING = {
   bulletIndentMM: 6,          // Bullet-Einzug (mm)
   topBelowWindowMM: 28,       // Luft unter dem Fenster (mm)
   bottomMarginMM: 24,         // unterer Seitenrand (mm)
-  // ▼ Startet jetzt eine Stufe größer (11.25) und arbeitet in 0.25er-Schritten herunter
-  sizeCandidates: [11.25, 11, 10.75, 10.5, 10.25, 10, 9.75, 9.5],
+  sizeCandidates: [11.25, 11, 10.75, 10.5, 10.25, 10, 9.75, 9.5], // Auto-Fit (eine Stufe größer startend)
   addressFontPt: 10,          // Schriftgröße im Fenster
   signatureGapMM: 18,         // Abstand vor Unterschrift (mm)
-  headingBeforeGapPt: 6,      // kleiner Abstand VOR „Was wir …“
-  headingAfterGapPt: 6        // kleiner Abstand NACH „Was wir …“
+  headingBeforeGapPt: 6,      // Abstand VOR „Was wir …“
+  headingAfterGapPt: 6,       // Abstand NACH „Was wir …“
 };
 
-// Logo
+// Logo (optional)
 const LOGO_URL = 'https://wisehomes.at/wp-content/uploads/2025/05/wisehomes-color@0.5x.png';
 const LOGO_WIDTH_PT = 110; // ~39 mm
 
-// Text
+// Standardtext (kann per "text" überschrieben werden)
 const DEFAULT_TEXT = `Sehr geehrte Damen und Herren,
 
 herzlichen Glückwunsch zum Auktionszuschlag.
@@ -57,6 +63,7 @@ E info@wisehomes.at · wisehomes.at`;
 
 module.exports = async (req, res) => {
   try {
+    // Healthcheck
     if (req.method === 'GET') {
       return res.status(200).json({ ok: true, usage: 'POST /api/letter { adresse, plzOrt, text? }' });
     }
@@ -72,7 +79,6 @@ module.exports = async (req, res) => {
     let b = req.body;
     if (typeof b === 'string') { try { b = JSON.parse(b); } catch { b = {}; } }
     if (!b || typeof b !== 'object') b = {};
-
     const adresse = (b.adresse ?? b.address ?? b.Adresse ?? '').toString().trim();
     const plzOrt  = (b['plz/ort'] ?? b['PLZ/Ort'] ?? b.plzOrt ?? b.plz_ort ?? b.plzort ?? '').toString().trim();
     const contentBody = (b.text ?? b.body ?? DEFAULT_TEXT).toString();
@@ -81,19 +87,19 @@ module.exports = async (req, res) => {
     const pdf = await PDFDocument.create();
     const helv = await pdf.embedStandardFont(StandardFonts.Helvetica);
     const helvBold = await pdf.embedStandardFont(StandardFonts.HelveticaBold);
-
     const page = pdf.addPage([A4.width, A4.height]);
 
-    // AcroForm + Default-Appearance auf Helvetica
+    // AcroForm + Default-Appearance: Helvetica erzwingen + NeedAppearances
     const form = pdf.getForm();
     const acro = form.acroForm;
     if (acro) {
       const dr = pdf.context.obj({});
       const fonts = pdf.context.obj({});
-      fonts.set(PDFName.of('Helv'), helv.ref);
+      fonts.set(PDFName.of('Helv'), helv.ref);                    // /Helv -> Helvetica
       dr.set(PDFName.of('Font'), fonts);
       acro.dict.set(PDFName.of('DR'), dr);
       acro.dict.set(PDFName.of('DA'), PDFString.of(`/Helv ${SPACING.addressFontPt} Tf 0 g`));
+      acro.dict.set(PDFName.of('NeedAppearances'), PDFBool.True); // Viewer rendert neue Eingaben mit /DA
     }
 
     // Logo oben rechts (optional)
@@ -104,8 +110,8 @@ module.exports = async (req, res) => {
         const img = await pdf.embedPng(arr);
         const scale = LOGO_WIDTH_PT / img.width;
         const w = img.width * scale, h = img.height * scale;
-        const x = A4.width - mm2pt(20) - w;      // rechter Rand 20mm
-        const y = A4.height - mm2pt(16) - h;     // oberer Rand 16mm
+        const x = A4.width - mm2pt(20) - w;   // rechter Rand 20 mm
+        const y = A4.height - mm2pt(16) - h;  // oberer Rand 16 mm
         page.drawImage(img, { x, y, width: w, height: h });
       }
     } catch {}
@@ -120,21 +126,23 @@ module.exports = async (req, res) => {
     const marginRight = mm2pt(22);
     const contentWidth = A4.width - marginLeft - marginRight;
 
-    // Editierbares Fenster – **zwei Leerzeilen oben**, dann Eigentümer, dann Adresse
+    // Editierbares Fenster – zwei Leerzeilen oben, dann Eigentümer, dann Adresse
     const addrField = form.createTextField('anschrift');
     addrField.enableMultiline();
     addrField.addToPage(page, { x: winX, y: winY, width: winW, height: winH, borderWidth: 0 });
     const editableBlock = [
-      '', // 1. Leerzeile oben
-      '', // 2. Leerzeile oben
+      '', // Leerzeile 1 (oben)
+      '', // Leerzeile 2 (oben)
       'An die neuen Eigentümer',
       (adresse || 'Bahnstraße 17'),
       (plzOrt  || '2404 Petronell')
     ].join('\n');
     addrField.setText(editableBlock);
+    // Feld-eigene /DA = Helvetica 10 pt
     if (addrField.acroField && addrField.acroField.dict) {
       addrField.acroField.dict.set(PDFName.of('DA'), PDFString.of(`/Helv ${SPACING.addressFontPt} Tf 0 g`));
     }
+    // Erscheinungsbild mit Helvetica generieren (bleibt editierbar)
     addrField.updateAppearances(helv);
 
     // ===== Textlayout mit Auto-Fit =====
@@ -172,10 +180,9 @@ module.exports = async (req, res) => {
         if (!lines.length) { y -= lineStep; continue; }
 
         for (const ln of lines) {
-
           const isHeading = ln.startsWith('Was wir für Sie aus einer Hand übernehmen:');
 
-          // **Abstand VOR der Überschrift**
+          // Abstand VOR der Überschrift
           if (isHeading) {
             if (y - SPACING.headingBeforeGapPt < bottomMargin) return false;
             y -= SPACING.headingBeforeGapPt;
@@ -208,15 +215,12 @@ module.exports = async (req, res) => {
           }
 
           const isBold =
-            ln === 'herzlichen Glückwunsch zum Auktionszuschlag.' ||
-            isHeading;
+            ln === 'herzlichen Glückwunsch zum Auktionszuschlag.' || isHeading;
 
           if (!drawWrapped(ln, isBold ? helvBold : helv)) return false;
 
-          // **Abstand NACH der Überschrift**
-          if (isHeading) {
-            y -= SPACING.headingAfterGapPt;
-          }
+          // Abstand NACH der Überschrift
+          if (isHeading) y -= SPACING.headingAfterGapPt;
         }
         // Absatz-Abstand
         y -= SPACING.paragraphGap;
@@ -229,6 +233,7 @@ module.exports = async (req, res) => {
     for (const s of SPACING.sizeCandidates) { if (drawSmart(s, true)) { picked = s; break; } }
     drawSmart(picked, false);
 
+    // Ausgabe
     const bytes = await pdf.save();
     res.status(200).json({
       fileName: 'wisehomes_brief.pdf',
