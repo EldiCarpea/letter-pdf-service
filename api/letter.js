@@ -22,7 +22,7 @@ const SPACING = {
   bulletGap: 6,               // Abstand nach Bullet-Block (pt)
   bulletIndentMM: 6,          // Einzug hinter "•" (mm)
   topBelowWindowMM: 28,       // Luft unter Adressfenster bis Text (mm)
-  bottomMarginMM: 24,         // unterer Rand (mm)
+  bottomMarginMM: 22,         // unterer Rand (mm)
 
   // Feste Schriftgröße für Fließtext UND Adressfeld (exakt gleich)
   baseFontSize: 11,           // z.B. 10.5 | 11 | 11.25
