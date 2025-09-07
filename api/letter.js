@@ -24,8 +24,9 @@ const SPACING = {
   bulletIndentMM: 6,          // Bullet-Einzug (mm)
   topBelowWindowMM: 28,       // Luft unter dem Fenster (mm)
   bottomMarginMM: 24,         // unterer Seitenrand (mm)
-  sizeCandidates: [10], // Auto-Fit (eine Stufe größer startend)
-  addressFontPt: 10,          // Schriftgröße im Fenster
+  // Start größer, dann in 0.25er-Schritten runter, bis es auf 1 Seite passt
+  sizeCandidates: [11.25, 11, 10.75, 10.5, 10.25, 10, 9.75, 9.5],
+  addressFontPt: 10,          // Initiale Fenster-Schrift (wird später auf picked überschrieben)
   signatureGapMM: 18,         // Abstand vor Unterschrift (mm)
   headingBeforeGapPt: 6,      // Abstand VOR „Was wir …“
   headingAfterGapPt: 6,       // Abstand NACH „Was wir …“
@@ -138,11 +139,10 @@ module.exports = async (req, res) => {
       (plzOrt  || '2404 Petronell')
     ].join('\n');
     addrField.setText(editableBlock);
-    // Feld-eigene /DA = Helvetica 10 pt
+    // initiale Feld-/DA (wird später auf picked überschrieben)
     if (addrField.acroField && addrField.acroField.dict) {
       addrField.acroField.dict.set(PDFName.of('DA'), PDFString.of(`/Helv ${SPACING.addressFontPt} Tf 0 g`));
     }
-    // Erscheinungsbild mit Helvetica generieren (bleibt editierbar)
     addrField.updateAppearances(helv);
 
     // ===== Textlayout mit Auto-Fit =====
@@ -228,9 +228,20 @@ module.exports = async (req, res) => {
       return true;
     }
 
-    // Auto-Fit
+    // Auto-Fit: ermittele endgültige Textgröße
     let picked = SPACING.sizeCandidates[SPACING.sizeCandidates.length - 1];
     for (const s of SPACING.sizeCandidates) { if (drawSmart(s, true)) { picked = s; break; } }
+
+    // ► Feld- und Formular-Schriftgröße ans Layout angleichen (EXAKTE Gleichheit)
+    if (acro) {
+      acro.dict.set(PDFName.of('DA'), PDFString.of(`/Helv ${picked} Tf 0 g`));
+    }
+    if (addrField?.acroField?.dict) {
+      addrField.acroField.dict.set(PDFName.of('DA'), PDFString.of(`/Helv ${picked} Tf 0 g`));
+      addrField.updateAppearances(helv);
+    }
+
+    // Jetzt final zeichnen
     drawSmart(picked, false);
 
     // Ausgabe
