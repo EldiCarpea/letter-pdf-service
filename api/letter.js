@@ -45,7 +45,7 @@ const DEFAULT_TEXT = `Sehr geehrte Damen und Herren,
 herzlichen Glückwunsch zum Auktionszuschlag.
 
 Wir sind Wisehomes, ein Full-Service-Bauträger aus Wien mit Fokus auf Ziegel-Massivbau von Einfamilien- und Doppelhäusern in Wien, Niederösterreich und Burgenland.
-Wir sichten laufend potenzielle Projekte auf öffentlichen Auktions- und Amtsportalen, dabei ist uns diese Liegenschaft besonders ins Auge gefallen. Da die Liegenschaft sehr gut zu unserem Profil passt, erlauben wir uns hiermit Sie direkt zu kontaktieren, in der Überzeugung, dass hier beste Voraussetzungen für eine erfolgreiche Zusammenarbeit bestehen.
+Wir sichten laufend potenzielle Projekte auf öffentlichen Auktions- und Amtsportalen, diese Liegenschaft ist uns dabei besonders aufgefallen. Da sie fachlich sehr gut zu unserem Profil passt, melden wir uns direkt bei Ihnen, in der Überzeugung, dass hier gute Voraussetzungen für eine Zusammenarbeit bestehen.
 Was wir für Sie aus einer Hand übernehmen:
 • Planung & Design: Bestandsaufnahme, Bauordnungs-/Bebauungscheck, Varianten bis zur Einreichung – ein stimmiges, genehmigungsfähiges Konzept.
 • Bau & Übergabe: Koordination aller Gewerke, Qualitätssicherung, termin- und kostentreu – schlüsselfertige Übergabe ohne Überraschungen.
@@ -53,7 +53,7 @@ Was wir für Sie aus einer Hand übernehmen:
 
 Unser Angebot: ein kostenloses Erstgespräch (vor Ort oder online). Anschließend erhalten Sie eine kurze Einschätzung mit Optionen, Budgetrahmen und nächsten Schritten.
 
-Wenn das für Sie interessant klingt, nennen Sie uns einfach 2–3 Wunschtermine – wir richten uns nach Ihrem Kalender. Sie erreichen uns jederzeit per E-Mail info@wisehomes.at oder telefonisch +43 1 774 20 32.
+Wenn das für Sie interessant klingt, nennen Sie uns einfach 2–3 Wunschtermine, wir richten uns nach Ihrem Kalender. Sie erreichen uns jederzeit per E-Mail info@wisehomes.at oder telefonisch +43 1 774 20 32.
 
 Mit besten Grüßen
 Eldi Neziri
