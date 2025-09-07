@@ -28,7 +28,7 @@ const SPACING = {
   baseFontSize: 11,           // z.B. 10.5 | 11 | 11.25
 
   // Start den Text N Zeilen "höher" (näher ans Fenster)
-  startUpLines: 3,            // 0 = Standard; 2 = zwei Zeilen höher starten
+  startUpLines: 2,            // 0 = Standard; 2 = zwei Zeilen höher starten
 
   signatureGapMM: 6,         // Unterschriftsfläche vor "Eldi Neziri" (mm)
   headingBeforeGapPt: 16,      // kleiner Abstand VOR "Was wir …"
