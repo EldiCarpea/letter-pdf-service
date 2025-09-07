@@ -15,23 +15,24 @@ const A4 = { width: 595.28, height: 841.89 };
 // Fensterposition (DL/C6/5)
 const WINDOW_MM = { left: 20, top: 45, width: 90, height: 45 };
 
-// Spacing & Typografie (einfach justierbar)
+// Spacing & Typografie
 const SPACING = {
-  lineGap: 5,              // zusätzlicher Zeilenabstand (pt)
-  paragraphGap: 10,        // Abstand zwischen Absätzen (pt)
-  bulletGap: 6,            // Abstand zwischen Bullet-Blöcken (pt)
-  bulletIndentMM: 6,       // Einzug nach Bullet (mm)
-  topBelowWindowMM: 28,    // Luft unter dem Fenster bis Text (mm)
-  bottomMarginMM: 24,      // unterer Rand (mm)
+  lineGap: 5,               // Zeilenabstand (pt)
+  paragraphGap: 10,         // Absatzabstand (pt)
+  bulletGap: 6,             // Abstand nach Bullet-Block (pt)
+  bulletIndentMM: 6,        // Bullet-Einzug (mm)
+  topBelowWindowMM: 28,     // Luft unter dem Fenster (mm)
+  bottomMarginMM: 24,       // unterer Seitenrand (mm)
   sizeCandidates: [11, 10.75, 10.5, 10.25, 10, 9.75, 9.5], // Auto-Fit
-  addressFontPt: 10,       // Schriftgröße im Fenster
+  addressFontPt: 10,        // Schriftgröße im Fenster
+  signatureGapMM: 18        // **neuer** Abstand vor Unterschrift (mm)
 };
 
 // Logo
 const LOGO_URL = 'https://wisehomes.at/wp-content/uploads/2025/05/wisehomes-color@0.5x.png';
 const LOGO_WIDTH_PT = 110; // ~39 mm
 
-// Dein Wunschtext (kompakt)
+// Dein Text
 const DEFAULT_TEXT = `Sehr geehrte Damen und Herren,
 
 herzlichen Glückwunsch zum Auktionszuschlag.
@@ -119,17 +120,18 @@ module.exports = async (req, res) => {
     const winY = A4.height - mm2pt(WINDOW_MM.top) - winH;
 
     const marginLeft = winX;
-    const marginRight = mm2pt(22); // etwas mehr rechter Rand
+    const marginRight = mm2pt(22);
     const contentWidth = A4.width - marginLeft - marginRight;
 
-    // Editierbares Fenster (inkl. „An die neuen Eigentümer“)
+    // Editierbares Fenster – **Adresse eine Zeile tiefer** (Leerzeile nach Überschrift)
     const addrField = form.createTextField('anschrift');
     addrField.enableMultiline();
     addrField.addToPage(page, { x: winX, y: winY, width: winW, height: winH, borderWidth: 0 });
     const editableBlock = [
       'An die neuen Eigentümer',
-      adresse || 'Bahnstraße 17',
-      plzOrt  || '2404 Petronell'
+      '',                                      // << Leerzeile eingefügt
+      (adresse || 'Bahnstraße 17'),
+      (plzOrt  || '2404 Petronell')
     ].join('\n');
     addrField.setText(editableBlock);
     if (addrField.acroField && addrField.acroField.dict) {
@@ -172,6 +174,12 @@ module.exports = async (req, res) => {
         if (!lines.length) { y -= lineStep; continue; }
 
         for (const ln of lines) {
+          // **Extra Absatz vor der Zeile "Was wir für Sie aus einer Hand übernehmen:"**
+          if (ln.startsWith('Was wir für Sie aus einer Hand übernehmen:')) {
+            y -= SPACING.paragraphGap; // Leerzeile/Absatz davor
+          }
+
+          // Bullets
           if (ln.startsWith('• ')) {
             const rest = ln.replace(/^•\s*/, '');
             const wrapped = wrap(rest, helv, size, contentWidth - bulletIndent);
@@ -188,9 +196,13 @@ module.exports = async (req, res) => {
               if (!measureOnly) page.drawText(wrapped[i], { x: marginLeft + bulletIndent, y, size, font: helv });
               y -= lineStep;
             }
-            // Extra Abstand nach Bullet-Zeile
             y -= SPACING.bulletGap;
             continue;
+          }
+
+          // **Unterschriftsfläche** – großer Abstand **vor "Eldi Neziri"**
+          if (ln === 'Eldi Neziri') {
+            y -= mm2pt(SPACING.signatureGapMM);
           }
 
           const isBold =
@@ -205,11 +217,9 @@ module.exports = async (req, res) => {
       return true;
     }
 
-    // Auto-Fit: teste Größen, bis alles auf die Seite passt
+    // Auto-Fit: teste Größen, bis alles auf eine Seite passt
     let picked = SPACING.sizeCandidates[SPACING.sizeCandidates.length - 1];
-    for (const s of SPACING.sizeCandidates) {
-      if (drawSmart(s, true)) { picked = s; break; }
-    }
+    for (const s of SPACING.sizeCandidates) { if (drawSmart(s, true)) { picked = s; break; } }
     drawSmart(picked, false);
 
     const bytes = await pdf.save();
