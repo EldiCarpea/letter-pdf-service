@@ -25,10 +25,10 @@ const SPACING = {
   bottomMarginMM: 24,         // unterer Rand (mm)
 
   // Feste Schriftgröße für Fließtext UND Adressfeld (exakt gleich)
-  baseFontSize: 10,           // z.B. 10.5 | 11 | 11.25
+  baseFontSize: 11,           // z.B. 10.5 | 11 | 11.25
 
   // Start den Text N Zeilen "höher" (näher ans Fenster)
-  startUpLines: 2,            // 0 = Standard; 2 = zwei Zeilen höher starten
+  startUpLines: 4,            // 0 = Standard; 2 = zwei Zeilen höher starten
 
   signatureGapMM: 18,         // Unterschriftsfläche vor "Eldi Neziri" (mm)
   headingBeforeGapPt: 6,      // kleiner Abstand VOR "Was wir …"
