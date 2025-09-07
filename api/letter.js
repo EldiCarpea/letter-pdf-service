@@ -57,8 +57,7 @@ Wenn das für Sie interessant klingt, nennen Sie uns einfach 2–3 Wunschtermine
 Mit besten Grüßen
 Eldi Neziri
 Projektberater | Wohnbau
-T +43 1 774 20 32
-E eldi.neziri@wisehomes.at · wisehomes.at`;
+T +43 1 774 20 32 · E eldi.neziri@wisehomes.at · wisehomes.at`;
 
 module.exports = async (req, res) => {
   try {
