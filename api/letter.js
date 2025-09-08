@@ -30,7 +30,7 @@ const SPACING = {
   // Start den Text N Zeilen "höher" (näher ans Fenster)
   startUpLines: 2,            // 0 = Standard; 2 = zwei Zeilen höher starten
 
-  signatureGapMM: 16,         // Unterschriftsfläche vor "Eldi Neziri" (mm)
+  signatureGapMM: 12,         // Unterschriftsfläche vor "Eldi Neziri" (mm)
   headingBeforeGapPt: 14,     // kleiner Abstand VOR "Was wir …"
   headingAfterGapPt: 6,       // kleiner Abstand NACH "Was wir …"
 };
